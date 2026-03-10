@@ -5,14 +5,14 @@ import pypto.language as pl
 class DeepSeekV32PrefillFront:
     @pl.function
     def deepseek_v3_2_prefill_front_layer(self, hidden_states: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16], seq_lens: pl.Tensor[[16], pl.INT32], layer_id_t: pl.Tensor[[1], pl.INT32], rope_cos: pl.Tensor[[4096, 64], pl.FP32], rope_sin: pl.Tensor[[4096, 64], pl.FP32], kv_cache: pl.Tensor[[65536, 512], pl.BFLOAT16], pe_cache: pl.Tensor[[65536, 64], pl.BFLOAT16], input_rms_weight: pl.Tensor[[1, 7168], pl.FP32], wq_a: pl.Tensor[[7168, 1536], pl.BFLOAT16], q_norm_weight: pl.Tensor[[1, 1536], pl.FP32], wq_b: pl.Tensor[[1536, 24576], pl.BFLOAT16], wkv_a: pl.Tensor[[7168, 576], pl.BFLOAT16], kv_norm_weight: pl.Tensor[[1, 512], pl.FP32], w_q_nope_to_latent: pl.Tensor[[128, 128, 512], pl.BFLOAT16], w_latent_to_v: pl.Tensor[[128, 512, 128], pl.BFLOAT16], dispatch_buf: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16]) -> pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16]:
-        layer_id: pl.Scalar[pl.INT32] = pl.tensor.read(layer_id_t, [0])
-        for b in pl.parallel(0, 16, 1, chunk=4):
-            seq_len_b: pl.Scalar[pl.INT32] = pl.tensor.read(seq_lens, [b])
-            tok_blocks: pl.Scalar[pl.INDEX] = (pl.cast(seq_len_b, pl.INDEX) + 4 - 1) // 4
-            for p0_idx in pl.range(0, tok_blocks, 1):
-                p0: pl.Scalar[pl.INDEX] = p0_idx * 4
-                valid_tok: pl.Scalar[pl.INDEX] = min(4, pl.cast(seq_len_b, pl.INDEX) - p0)
-                with pl.auto_incore():
+        with pl.auto_incore():
+            layer_id: pl.Scalar[pl.INT32] = pl.tensor.read(layer_id_t, [0])
+            for b in pl.parallel(0, 16, 1, chunk=4):
+                seq_len_b: pl.Scalar[pl.INT32] = pl.tensor.read(seq_lens, [b])
+                tok_blocks: pl.Scalar[pl.INDEX] = (pl.cast(seq_len_b, pl.INDEX) + 4 - 1) // 4
+                for p0_idx in pl.range(0, tok_blocks, 1):
+                    p0: pl.Scalar[pl.INDEX] = p0_idx * 4
+                    valid_tok: pl.Scalar[pl.INDEX] = min(4, pl.cast(seq_len_b, pl.INDEX) - p0)
                     sq_sum: pl.Tensor[[4, 1], pl.FP32] = pl.tensor.create([4, 1], dtype=pl.FP32)
                     sq_sum: pl.Tensor[[4, 1], pl.FP32] = pl.tensor.mul(sq_sum, 0.0)
                     usage_pad: pl.Tensor[[4, 16384], pl.BFLOAT16] = pl.tensor.create([4, 16384], dtype=pl.BFLOAT16)
@@ -57,7 +57,6 @@ class DeepSeekV32PrefillFront:
                             wkv_chunk: pl.Tensor[[512, 128], pl.BFLOAT16] = pl.tensor.view(wkv_a, [512, 128], [k0, kv0])
                             kv_acc: pl.Tensor[[4, 128], pl.FP32] = pl.tensor.add(kv_acc, pl.tensor.matmul(pl.tensor.cast(normed, target_type=pl.BFLOAT16, mode=2), wkv_chunk, a_trans=False, b_trans=False, c_matrix_nz=False))
                         kv_a_tile: pl.Tensor[[4, 576], pl.BFLOAT16] = pl.tensor.assemble(kv_a_tile, pl.tensor.cast(kv_acc, target_type=pl.BFLOAT16, mode=2), [0, kv0])
-                with pl.auto_incore():
                     attn_tile: pl.Tensor[[4, 16384], pl.FP32] = pl.tensor.create([4, 16384], dtype=pl.FP32)
                     attn_tile: pl.Tensor[[4, 16384], pl.FP32] = pl.tensor.mul(attn_tile, 0.0)
                     for ti in pl.range(0, valid_tok, 1):
@@ -239,9 +238,9 @@ class DeepSeekV32PrefillFront:
                                 ctx_v: pl.Tensor[[1, 128], pl.FP32] = pl.tensor.assemble(ctx_v, v_part, [0, v0])
                             attn_row: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.assemble(attn_row, ctx_v, [0, v_col])
                         attn_tile: pl.Tensor[[4, 16384], pl.FP32] = pl.tensor.assemble(attn_tile, attn_row, [ti, 0])
-                    for ti in pl.range(0, valid_tok, 1):
-                        pos: pl.Scalar[pl.INDEX] = p0 + ti
-                        target_node: pl.Scalar[pl.INDEX] = (b + pos + pl.cast(layer_id, pl.INDEX)) % 128
-                        token_row: pl.Tensor[[1, 16384], pl.BFLOAT16] = pl.tensor.cast(pl.tensor.view(attn_tile, [1, 16384], [ti, 0]), target_type=pl.BFLOAT16, mode=2)
-                        dispatch_buf: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16] = pl.tensor.assemble(dispatch_buf, token_row, [target_node, b, pos, 0])
+                        for ti in pl.range(0, valid_tok, 1):
+                            pos: pl.Scalar[pl.INDEX] = p0 + ti
+                            target_node: pl.Scalar[pl.INDEX] = (b + pos + pl.cast(layer_id, pl.INDEX)) % 128
+                            token_row: pl.Tensor[[1, 16384], pl.BFLOAT16] = pl.tensor.cast(pl.tensor.view(attn_tile, [1, 16384], [ti, 0]), target_type=pl.BFLOAT16, mode=2)
+                            dispatch_buf: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16] = pl.tensor.assemble(dispatch_buf, token_row, [target_node, b, pos, 0])
         return dispatch_buf

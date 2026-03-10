@@ -4,14 +4,22 @@ import pypto.language as pl
 @pl.program
 class DeepSeekV32DecodeBack:
     @pl.function(type=pl.FunctionType.InCore)
-    def deepseek_v3_2_decode_back_layer_incore_0(self, b0_0: pl.Scalar[pl.INDEX], combined_2: pl.Tensor[[16, 16384], pl.FP32], hidden_states_0: pl.Tensor[[16, 7168], pl.BFLOAT16], ob_0_out: pl.Scalar[pl.INDEX], resid1_tile_0: pl.Tensor[[4, 7168], pl.FP32], resid1_tile_iter_1_outer_l0: pl.Tensor[[4, 7168], pl.FP32], wo_0: pl.Tensor[[16384, 7168], pl.BFLOAT16]) -> pl.Tensor[[4, 7168], pl.FP32]:
+    def deepseek_v3_2_decode_back_layer_incore_0(self, b_0_out: pl.Scalar[pl.INDEX], combine_buf_0: pl.Tensor[[128, 16, 16384], pl.BFLOAT16], combined_0: pl.Tensor[[16, 16384], pl.FP32], combined_iter_1_outer_l0: pl.Tensor[[16, 16384], pl.FP32], node_id_0: pl.Scalar[pl.INT32]) -> pl.Tensor[[16, 16384], pl.FP32]:
+        for b_0_in, (combined_iter_1_outer_l1,) in pl.parallel(0, 4, 1, init_values=(combined_iter_1_outer_l0,)):
+            _t0: pl.Tensor[[1, 16384], pl.BFLOAT16] = pl.tensor.view(combine_buf_0, [1, 16384], [node_id_0, 0 + (b_0_out * 4 + b_0_in) * 1, 0])
+            row_0: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.cast(_t0, target_type=pl.FP32, mode=2)
+            combined_3: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.assemble(combined_iter_1_outer_l1, row_0, [0 + (b_0_out * 4 + b_0_in) * 1, 0])
+            combined_iter_1_outer_l1_rv: pl.Tensor[[16, 16384], pl.FP32] = pl.yield_(combined_3)
+        return combined_iter_1_outer_l1_rv
+    @pl.function(type=pl.FunctionType.InCore)
+    def deepseek_v3_2_decode_back_layer_incore_1(self, b0_0: pl.Scalar[pl.INDEX], combined_iter_1_outer_l0_rv: pl.Tensor[[16, 16384], pl.FP32], hidden_states_0: pl.Tensor[[16, 7168], pl.BFLOAT16], ob_0_out: pl.Scalar[pl.INDEX], resid1_tile_0: pl.Tensor[[4, 7168], pl.FP32], resid1_tile_iter_1_outer_l0: pl.Tensor[[4, 7168], pl.FP32], wo_0: pl.Tensor[[16384, 7168], pl.BFLOAT16]) -> pl.Tensor[[4, 7168], pl.FP32]:
         for ob_0_in, (resid1_tile_iter_1_outer_l1,) in pl.parallel(0, 8, 1, init_values=(resid1_tile_iter_1_outer_l0,)):
             o0_0: pl.Scalar[pl.INDEX] = (0 + (ob_0_out * 8 + ob_0_in) * 1) * 128
             o_acc_0: pl.Tensor[[4, 128], pl.FP32] = pl.tensor.create([4, 128], dtype=pl.FP32)
             o_acc_1: pl.Tensor[[4, 128], pl.FP32] = pl.tensor.mul(o_acc_0, 0.0)
             for kb_0, (o_acc_iter_2,) in pl.range(0, 32, 1, init_values=(o_acc_1,)):
                 k0_0: pl.Scalar[pl.INDEX] = kb_0 * 512
-                _t1: pl.Tensor[[4, 512], pl.FP32] = pl.tensor.view(combined_2, [4, 512], [b0_0, k0_0])
+                _t1: pl.Tensor[[4, 512], pl.FP32] = pl.tensor.view(combined_iter_1_outer_l0_rv, [4, 512], [b0_0, k0_0])
                 a_chunk_0: pl.Tensor[[4, 512], pl.BFLOAT16] = pl.tensor.cast(_t1, target_type=pl.BFLOAT16, mode=2)
                 w_chunk_0: pl.Tensor[[512, 128], pl.BFLOAT16] = pl.tensor.view(wo_0, [512, 128], [k0_0, o0_0])
                 _t2: pl.Tensor[[4, 128], pl.BFLOAT16] = pl.tensor.matmul(a_chunk_0, w_chunk_0, a_trans=False, b_trans=False, c_matrix_nz=False)
@@ -24,7 +32,7 @@ class DeepSeekV32DecodeBack:
             resid1_tile_iter_1_outer_l1_rv: pl.Tensor[[4, 7168], pl.FP32] = pl.yield_(resid1_tile_3)
         return resid1_tile_iter_1_outer_l1_rv
     @pl.function(type=pl.FunctionType.InCore)
-    def deepseek_v3_2_decode_back_layer_incore_1(self, dob_0_out: pl.Scalar[pl.INDEX], down_proj_tile_1: pl.Tensor[[4, 7168], pl.FP32], down_proj_tile_iter_2: pl.Tensor[[4, 7168], pl.FP32], down_proj_tile_iter_4_outer_l0: pl.Tensor[[4, 7168], pl.FP32], mlp_chunk_bf16_0: pl.Tensor[[4, 512], pl.BFLOAT16], o0_3: pl.Scalar[pl.INDEX], w_down_0: pl.Tensor[[18432, 7168], pl.BFLOAT16]) -> pl.Tensor[[4, 7168], pl.FP32]:
+    def deepseek_v3_2_decode_back_layer_incore_2(self, dob_0_out: pl.Scalar[pl.INDEX], down_proj_tile_1: pl.Tensor[[4, 7168], pl.FP32], down_proj_tile_iter_2: pl.Tensor[[4, 7168], pl.FP32], down_proj_tile_iter_4_outer_l0: pl.Tensor[[4, 7168], pl.FP32], mlp_chunk_bf16_0: pl.Tensor[[4, 512], pl.BFLOAT16], o0_3: pl.Scalar[pl.INDEX], w_down_0: pl.Tensor[[18432, 7168], pl.BFLOAT16]) -> pl.Tensor[[4, 7168], pl.FP32]:
         for dob_0_in, (down_proj_tile_iter_4_outer_l1,) in pl.parallel(0, 8, 1, init_values=(down_proj_tile_iter_4_outer_l0,)):
             d0_0: pl.Scalar[pl.INDEX] = (0 + (dob_0_out * 8 + dob_0_in) * 1) * 128
             down_prev_0: pl.Tensor[[4, 128], pl.FP32] = pl.tensor.view(down_proj_tile_iter_4_outer_l1, [4, 128], [0, d0_0])
@@ -35,7 +43,7 @@ class DeepSeekV32DecodeBack:
             down_proj_tile_iter_4_outer_l1_rv: pl.Tensor[[4, 7168], pl.FP32] = pl.yield_(down_proj_tile_6)
         return down_proj_tile_iter_4_outer_l1_rv
     @pl.function(type=pl.FunctionType.InCore)
-    def deepseek_v3_2_decode_back_layer_incore_2(self, b0_0: pl.Scalar[pl.INDEX], down_proj_tile_3: pl.Tensor[[4, 7168], pl.FP32], o0_2: pl.Scalar[pl.INDEX], o0_iter_4_outer_l0: pl.Scalar[pl.INDEX], ob_2_out: pl.Scalar[pl.INDEX], out_0: pl.Tensor[[16, 7168], pl.BFLOAT16], out_iter_1: pl.Tensor[[16, 7168], pl.BFLOAT16], out_iter_3_outer_l0: pl.Tensor[[16, 7168], pl.BFLOAT16], resid1_tile_iter_1_outer_l0_rv: pl.Tensor[[4, 7168], pl.FP32]) -> tuple[pl.Scalar[pl.INDEX], pl.Tensor[[16, 7168], pl.BFLOAT16]]:
+    def deepseek_v3_2_decode_back_layer_incore_3(self, b0_0: pl.Scalar[pl.INDEX], down_proj_tile_3: pl.Tensor[[4, 7168], pl.FP32], o0_2: pl.Scalar[pl.INDEX], o0_iter_4_outer_l0: pl.Scalar[pl.INDEX], ob_2_out: pl.Scalar[pl.INDEX], out_0: pl.Tensor[[16, 7168], pl.BFLOAT16], out_iter_1: pl.Tensor[[16, 7168], pl.BFLOAT16], out_iter_3_outer_l0: pl.Tensor[[16, 7168], pl.BFLOAT16], resid1_tile_iter_1_outer_l0_rv: pl.Tensor[[4, 7168], pl.FP32]) -> tuple[pl.Scalar[pl.INDEX], pl.Tensor[[16, 7168], pl.BFLOAT16]]:
         for ob_2_in, (o0_iter_4_outer_l1, out_iter_3_outer_l1) in pl.parallel(0, 8, 1, init_values=(o0_iter_4_outer_l0, out_iter_3_outer_l0)):
             o0_6: pl.Scalar[pl.INDEX] = (0 + (ob_2_out * 8 + ob_2_in) * 1) * 128
             _t18: pl.Tensor[[4, 128], pl.FP32] = pl.tensor.view(down_proj_tile_3, [4, 128], [0, o0_6])
@@ -49,15 +57,13 @@ class DeepSeekV32DecodeBack:
     def deepseek_v3_2_decode_back_layer(self, hidden_states_0: pl.Tensor[[16, 7168], pl.BFLOAT16], node_id_t_0: pl.Tensor[[1], pl.INT32], combine_buf_0: pl.Tensor[[128, 16, 16384], pl.BFLOAT16], wo_0: pl.Tensor[[16384, 7168], pl.BFLOAT16], post_rms_weight_0: pl.Tensor[[1, 7168], pl.FP32], w_gate_0: pl.Tensor[[7168, 18432], pl.BFLOAT16], w_up_0: pl.Tensor[[7168, 18432], pl.BFLOAT16], w_down_0: pl.Tensor[[18432, 7168], pl.BFLOAT16], out_0: pl.Tensor[[16, 7168], pl.BFLOAT16]) -> pl.Tensor[[16, 7168], pl.BFLOAT16]:
         node_id_0: pl.Scalar[pl.INT32] = pl.tensor.read(node_id_t_0, [0])
         combined_0: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.create([16, 16384], dtype=pl.FP32)
-        for b_0, (combined_iter_1,) in pl.parallel(0, 16, 1, init_values=(combined_0,), chunk=4):
-            _t0: pl.Tensor[[1, 16384], pl.BFLOAT16] = pl.tensor.view(combine_buf_0, [1, 16384], [node_id_0, b_0, 0])
-            row_0: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.cast(_t0, target_type=pl.FP32, mode=2)
-            combined_3: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.assemble(combined_iter_1, row_0, [b_0, 0])
-            combined_2: pl.Tensor[[16, 16384], pl.FP32] = pl.yield_(combined_3)
+        for b_0_out, (combined_iter_1_outer_l0,) in pl.range(0, 4, 1, init_values=(combined_0,)):
+            combined_iter_1_outer_l1_rv: pl.Tensor[[16, 16384], pl.FP32] = self.deepseek_v3_2_decode_back_layer_incore_0(b_0_out, combine_buf_0, combined_0, combined_iter_1_outer_l0, node_id_0)
+            combined_iter_1_outer_l0_rv: pl.Tensor[[16, 16384], pl.FP32] = pl.yield_(combined_iter_1_outer_l1_rv)
         for b0_0, (out_iter_1,) in pl.range(0, 16, 4, init_values=(out_0,)):
             resid1_tile_0: pl.Tensor[[4, 7168], pl.FP32] = pl.tensor.create([4, 7168], dtype=pl.FP32)
             for ob_0_out, (resid1_tile_iter_1_outer_l0,) in pl.range(0, 7, 1, init_values=(resid1_tile_0,)):
-                resid1_tile_iter_1_outer_l1_rv: pl.Tensor[[4, 7168], pl.FP32] = self.deepseek_v3_2_decode_back_layer_incore_0(b0_0, combined_2, hidden_states_0, ob_0_out, resid1_tile_0, resid1_tile_iter_1_outer_l0, wo_0)
+                resid1_tile_iter_1_outer_l1_rv: pl.Tensor[[4, 7168], pl.FP32] = self.deepseek_v3_2_decode_back_layer_incore_1(b0_0, combined_iter_1_outer_l0_rv, hidden_states_0, ob_0_out, resid1_tile_0, resid1_tile_iter_1_outer_l0, wo_0)
                 resid1_tile_iter_1_outer_l0_rv: pl.Tensor[[4, 7168], pl.FP32] = pl.yield_(resid1_tile_iter_1_outer_l1_rv)
             sq_sum_0: pl.Tensor[[4, 1], pl.FP32] = pl.tensor.create([4, 1], dtype=pl.FP32)
             sq_sum_1: pl.Tensor[[4, 1], pl.FP32] = pl.tensor.mul(sq_sum_0, 0.0)
@@ -107,11 +113,11 @@ class DeepSeekV32DecodeBack:
                 mlp_chunk_0: pl.Tensor[[4, 512], pl.FP32] = pl.tensor.mul(_t16, up_acc_3)
                 mlp_chunk_bf16_0: pl.Tensor[[4, 512], pl.BFLOAT16] = pl.tensor.cast(mlp_chunk_0, target_type=pl.BFLOAT16, mode=2)
                 for dob_0_out, (down_proj_tile_iter_4_outer_l0,) in pl.range(0, 7, 1, init_values=(down_proj_tile_iter_2,)):
-                    down_proj_tile_iter_4_outer_l1_rv: pl.Tensor[[4, 7168], pl.FP32] = self.deepseek_v3_2_decode_back_layer_incore_1(dob_0_out, down_proj_tile_1, down_proj_tile_iter_2, down_proj_tile_iter_4_outer_l0, mlp_chunk_bf16_0, o0_3, w_down_0)
+                    down_proj_tile_iter_4_outer_l1_rv: pl.Tensor[[4, 7168], pl.FP32] = self.deepseek_v3_2_decode_back_layer_incore_2(dob_0_out, down_proj_tile_1, down_proj_tile_iter_2, down_proj_tile_iter_4_outer_l0, mlp_chunk_bf16_0, o0_3, w_down_0)
                     down_proj_tile_iter_4_outer_l0_rv: pl.Tensor[[4, 7168], pl.FP32] = pl.yield_(down_proj_tile_iter_4_outer_l1_rv)
                 down_proj_tile_3, k0_8, kb_4, o0_2 = pl.yield_(down_proj_tile_iter_4_outer_l0_rv, k0_10, kb_5, o0_3)
             for ob_2_out, (o0_iter_4_outer_l0, out_iter_3_outer_l0) in pl.range(0, 7, 1, init_values=(o0_2, out_iter_1)):
-                ret: pl.Tuple([pl.Scalar[pl.INDEX], pl.Tensor[[16, 7168], pl.BFLOAT16]]) = self.deepseek_v3_2_decode_back_layer_incore_2(b0_0, down_proj_tile_3, o0_2, o0_iter_4_outer_l0, ob_2_out, out_0, out_iter_1, out_iter_3_outer_l0, resid1_tile_iter_1_outer_l0_rv)
+                ret: pl.Tuple([pl.Scalar[pl.INDEX], pl.Tensor[[16, 7168], pl.BFLOAT16]]) = self.deepseek_v3_2_decode_back_layer_incore_3(b0_0, down_proj_tile_3, o0_2, o0_iter_4_outer_l0, ob_2_out, out_0, out_iter_1, out_iter_3_outer_l0, resid1_tile_iter_1_outer_l0_rv)
                 o0_iter_4_outer_l1_rv: pl.Scalar[pl.INDEX] = ret[0]
                 out_iter_3_outer_l1_rv: pl.Tensor[[16, 7168], pl.BFLOAT16] = ret[1]
                 o0_iter_4_outer_l0_rv, out_iter_3_outer_l0_rv = pl.yield_(o0_iter_4_outer_l1_rv, out_iter_3_outer_l1_rv)

@@ -21,6 +21,7 @@ import pypto.language as pl
 
 BATCH = 16
 MAX_SEQ = 4096
+
 HIDDEN = 7168
 INTERMEDIATE = 18432
 NUM_HEADS = 128
@@ -73,16 +74,15 @@ def build_deepseek_v3_2_decode_back_program(
             w_down: pl.Tensor[[INTER_CFG, HIDDEN_CFG], pl.BF16],
             out: pl.Tensor[[BATCH_CFG, HIDDEN_CFG], pl.BF16],
         ) -> pl.Tensor[[BATCH_CFG, HIDDEN_CFG], pl.BF16]:
-            node_id = pl.tensor.read(node_id_t, [0])
-
-            combined = pl.create_tensor([BATCH_CFG, ATTN_OUT_CFG], dtype=pl.FP32)
-            # Read combine results from this node view.
-            for b in pl.parallel(0, BATCH_CFG, 1, chunk=4):
-                row = pl.cast(pl.view(combine_buf, [1, ATTN_OUT_CFG], [node_id, b, 0]), target_type=pl.FP32)
-                combined = pl.assemble(combined, row, [b, 0])
-
-            # Scope: output projection + residual + post-rms + MLP + residual.
             with pl.auto_incore():
+                node_id = pl.tensor.read(node_id_t, [0])
+                combined = pl.create_tensor([BATCH_CFG, ATTN_OUT_CFG], dtype=pl.FP32)
+                # Read combine results from this node view.
+                for b in pl.parallel(0, BATCH_CFG, 1, chunk=4):
+                    row = pl.cast(pl.view(combine_buf, [1, ATTN_OUT_CFG], [node_id, b, 0]), target_type=pl.FP32)
+                    combined = pl.assemble(combined, row, [b, 0])
+
+                # Scope: output projection + residual + post-rms + MLP + residual.
                 for b0 in pl.range(0, BATCH_CFG, BATCH_TILE):
                     resid1_tile = pl.create_tensor([BATCH_TILE, HIDDEN_CFG], dtype=pl.FP32)
 

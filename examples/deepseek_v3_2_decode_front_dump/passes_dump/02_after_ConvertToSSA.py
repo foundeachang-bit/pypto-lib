@@ -5,12 +5,10 @@ import pypto.language as pl
 class DeepSeekV32DecodeFront:
     @pl.function
     def deepseek_v3_2_decode_front_layer(self, hidden_states_0: pl.Tensor[[16, 7168], pl.BFLOAT16], seq_lens_0: pl.Tensor[[16], pl.INT32], layer_id_t_0: pl.Tensor[[1], pl.INT32], rope_cos_0: pl.Tensor[[4096, 64], pl.FP32], rope_sin_0: pl.Tensor[[4096, 64], pl.FP32], kv_cache_0: pl.Tensor[[65536, 512], pl.BFLOAT16], pe_cache_0: pl.Tensor[[65536, 64], pl.BFLOAT16], input_rms_weight_0: pl.Tensor[[1, 7168], pl.FP32], wq_a_0: pl.Tensor[[7168, 1536], pl.BFLOAT16], q_norm_weight_0: pl.Tensor[[1, 1536], pl.FP32], wq_b_0: pl.Tensor[[1536, 24576], pl.BFLOAT16], wkv_a_0: pl.Tensor[[7168, 576], pl.BFLOAT16], kv_norm_weight_0: pl.Tensor[[1, 512], pl.FP32], w_q_nope_to_latent_0: pl.Tensor[[128, 128, 512], pl.BFLOAT16], w_latent_to_v_0: pl.Tensor[[128, 512, 128], pl.BFLOAT16], dispatch_buf_0: pl.Tensor[[128, 16, 16384], pl.BFLOAT16]) -> pl.Tensor[[128, 16, 16384], pl.BFLOAT16]:
-        layer_id_0: pl.Scalar[pl.INT32] = pl.tensor.read(layer_id_t_0, [0])
-        qr_0: pl.Tensor[[16, 1536], pl.BFLOAT16] = pl.tensor.create([16, 1536], dtype=pl.BFLOAT16)
-        q_proj_0: pl.Tensor[[16, 128 * 192], pl.BFLOAT16] = pl.tensor.create([16, 128 * 192], dtype=pl.BFLOAT16)
-        kv_a_0: pl.Tensor[[16, 576], pl.BFLOAT16] = pl.tensor.create([16, 576], dtype=pl.BFLOAT16)
-        attn_front_0: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.create([16, 16384], dtype=pl.FP32)
         with pl.auto_incore():
+            qr_0: pl.Tensor[[16, 1536], pl.BFLOAT16] = pl.tensor.create([16, 1536], dtype=pl.BFLOAT16)
+            q_proj_0: pl.Tensor[[16, 128 * 192], pl.BFLOAT16] = pl.tensor.create([16, 128 * 192], dtype=pl.BFLOAT16)
+            kv_a_0: pl.Tensor[[16, 576], pl.BFLOAT16] = pl.tensor.create([16, 576], dtype=pl.BFLOAT16)
             sq_sum_0: pl.Tensor[[16, 1], pl.FP32] = pl.tensor.create([16, 1], dtype=pl.FP32)
             sq_sum_1: pl.Tensor[[16, 1], pl.FP32] = pl.tensor.mul(sq_sum_0, 0.0)
             usage_pad_0: pl.Tensor[[4, 16384], pl.BFLOAT16] = pl.tensor.create([4, 16384], dtype=pl.BFLOAT16)
@@ -71,28 +69,30 @@ class DeepSeekV32DecodeFront:
                     kv_a_5: pl.Tensor[[16, 576], pl.BFLOAT16] = pl.tensor.assemble(kv_a_iter_3, pl.tensor.cast(kv_acc_3, target_type=pl.BFLOAT16, mode=2), [b0_0, kv0_0])
                     gamma_7, k0_14, kb_10, kv_a_4, normed_2, x_chunk_9, x_chunk_bf16_2 = pl.yield_(gamma_9, k0_16, kb_11, kv_a_5, normed_4, x_chunk_11, x_chunk_bf16_4)
                 k0_2, kb_2, kv_a_2, q_proj_2, qr_2, x_chunk_2 = pl.yield_(k0_14, kb_10, kv_a_4, q_proj_4, qr_4, x_chunk_9)
-        for b_0, (attn_front_iter_1, kv_cache_iter_1, pe_cache_iter_1) in pl.parallel(0, 16, 1, init_values=(attn_front_0, kv_cache_0, pe_cache_0), chunk=4):
-            ctx_len_0: pl.Scalar[pl.INT32] = pl.tensor.read(seq_lens_0, [b_0])
-            pos_0: pl.Scalar[pl.INDEX] = pl.cast(ctx_len_0, pl.INDEX) - 1
-            cos_row_0: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.view(rope_cos_0, [1, 64], [pos_0, 0])
-            sin_row_0: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.view(rope_sin_0, [1, 64], [pos_0, 0])
-            cos_lo_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(cos_row_0, [1, 64 // 2], [0, 0])
-            cos_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(cos_row_0, [1, 64 // 2], [0, 64 // 2])
-            sin_lo_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(sin_row_0, [1, 64 // 2], [0, 0])
-            sin_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(sin_row_0, [1, 64 // 2], [0, 64 // 2])
-            cache_row_0: pl.Scalar[pl.INDEX] = b_0 * 4096 + pos_0
-            kv_row_0: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.cast(pl.tensor.view(kv_a_2, [1, 512], [b_0, 0]), target_type=pl.FP32, mode=2)
-            kv_gamma_0: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.view(kv_norm_weight_0, [1, 512], [0, 0])
-            kv_normed_0: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.col_expand_mul(kv_row_0, kv_gamma_0)
-            pe_row_0: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.cast(pl.tensor.view(kv_a_2, [1, 64], [b_0, 512]), target_type=pl.FP32, mode=2)
-            pe_lo_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(pe_row_0, [1, 64 // 2], [0, 0])
-            pe_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(pe_row_0, [1, 64 // 2], [0, 64 // 2])
-            pe_rot_0: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.create([1, 64], dtype=pl.FP32)
-            pe_rot_1: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.assemble(pe_rot_0, pl.tensor.sub(pl.tensor.col_expand_mul(pe_lo_0, cos_lo_0), pl.tensor.col_expand_mul(pe_hi_0, sin_lo_0)), [0, 0])
-            pe_rot_2: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.assemble(pe_rot_1, pl.tensor.add(pl.tensor.col_expand_mul(pe_hi_0, cos_hi_0), pl.tensor.col_expand_mul(pe_lo_0, sin_hi_0)), [0, 64 // 2])
-            kv_cache_3: pl.Tensor[[65536, 512], pl.BFLOAT16] = pl.tensor.assemble(kv_cache_iter_1, pl.tensor.cast(kv_normed_0, target_type=pl.BFLOAT16, mode=2), [cache_row_0, 0])
-            pe_cache_3: pl.Tensor[[65536, 64], pl.BFLOAT16] = pl.tensor.assemble(pe_cache_iter_1, pl.tensor.cast(pe_rot_2, target_type=pl.BFLOAT16, mode=2), [cache_row_0, 0])
-            with pl.auto_incore():
+        with pl.auto_incore():
+            layer_id_0: pl.Scalar[pl.INT32] = pl.tensor.read(layer_id_t_0, [0])
+            attn_front_0: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.create([16, 16384], dtype=pl.FP32)
+            for b_0, (attn_front_iter_1, kv_cache_iter_1, pe_cache_iter_1) in pl.parallel(0, 16, 1, init_values=(attn_front_0, kv_cache_0, pe_cache_0), chunk=4):
+                ctx_len_0: pl.Scalar[pl.INT32] = pl.tensor.read(seq_lens_0, [b_0])
+                pos_0: pl.Scalar[pl.INDEX] = pl.cast(ctx_len_0, pl.INDEX) - 1
+                cos_row_0: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.view(rope_cos_0, [1, 64], [pos_0, 0])
+                sin_row_0: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.view(rope_sin_0, [1, 64], [pos_0, 0])
+                cos_lo_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(cos_row_0, [1, 64 // 2], [0, 0])
+                cos_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(cos_row_0, [1, 64 // 2], [0, 64 // 2])
+                sin_lo_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(sin_row_0, [1, 64 // 2], [0, 0])
+                sin_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(sin_row_0, [1, 64 // 2], [0, 64 // 2])
+                cache_row_0: pl.Scalar[pl.INDEX] = b_0 * 4096 + pos_0
+                kv_row_0: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.cast(pl.tensor.view(kv_a_2, [1, 512], [b_0, 0]), target_type=pl.FP32, mode=2)
+                kv_gamma_0: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.view(kv_norm_weight_0, [1, 512], [0, 0])
+                kv_normed_0: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.col_expand_mul(kv_row_0, kv_gamma_0)
+                pe_row_0: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.cast(pl.tensor.view(kv_a_2, [1, 64], [b_0, 512]), target_type=pl.FP32, mode=2)
+                pe_lo_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(pe_row_0, [1, 64 // 2], [0, 0])
+                pe_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(pe_row_0, [1, 64 // 2], [0, 64 // 2])
+                pe_rot_0: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.create([1, 64], dtype=pl.FP32)
+                pe_rot_1: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.assemble(pe_rot_0, pl.tensor.sub(pl.tensor.col_expand_mul(pe_lo_0, cos_lo_0), pl.tensor.col_expand_mul(pe_hi_0, sin_lo_0)), [0, 0])
+                pe_rot_2: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.assemble(pe_rot_1, pl.tensor.add(pl.tensor.col_expand_mul(pe_hi_0, cos_hi_0), pl.tensor.col_expand_mul(pe_lo_0, sin_hi_0)), [0, 64 // 2])
+                kv_cache_3: pl.Tensor[[65536, 512], pl.BFLOAT16] = pl.tensor.assemble(kv_cache_iter_1, pl.tensor.cast(kv_normed_0, target_type=pl.BFLOAT16, mode=2), [cache_row_0, 0])
+                pe_cache_3: pl.Tensor[[65536, 64], pl.BFLOAT16] = pl.tensor.assemble(pe_cache_iter_1, pl.tensor.cast(pe_rot_2, target_type=pl.BFLOAT16, mode=2), [cache_row_0, 0])
                 topk_vals_0: pl.Tensor[[1, 2048], pl.FP32] = pl.tensor.create([1, 2048], dtype=pl.FP32)
                 topk_idx_0: pl.Tensor[[1, 2048], pl.INT32] = pl.tensor.create([1, 2048], dtype=pl.INT32)
                 blk_topk_vals_0: pl.Tensor[[2, 2048], pl.FP32] = pl.tensor.create([2, 2048], dtype=pl.FP32)
@@ -227,7 +227,7 @@ class DeepSeekV32DecodeFront:
                     kk_8, topk_idx_6, topk_vals_3 = pl.yield_(kk_9, topk_idx_8, topk_vals_5)
                 attn_row_0: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.create([1, 16384], dtype=pl.FP32)
                 attn_row_1: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.mul(attn_row_0, 0.0)
-                for h_0, (attn_row_iter_2, kk_iter_10, s_iter_1) in pl.parallel(0, 128, 1, init_values=(attn_row_1, kk_8, s_0), chunk=8):
+                for h_0, (attn_front_iter_3, attn_row_iter_2, kk_iter_10, s_iter_1) in pl.parallel(0, 128, 1, init_values=(attn_front_iter_1, attn_row_1, kk_8, s_0), chunk=8):
                     q_col_0: pl.Scalar[pl.INDEX] = h_0 * 192
                     q_nope_0: pl.Tensor[[1, 128], pl.FP32] = pl.tensor.cast(pl.tensor.view(q_proj_2, [1, 128], [b_0, q_col_0]), target_type=pl.FP32, mode=2)
                     q_pe_0: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.cast(pl.tensor.view(q_proj_2, [1, 64], [b_0, q_col_0 + 128]), target_type=pl.FP32, mode=2)
@@ -284,12 +284,12 @@ class DeepSeekV32DecodeFront:
                         ctx_v_4: pl.Tensor[[1, 128], pl.FP32] = pl.tensor.assemble(ctx_v_iter_2, v_part_0, [0, v0_0])
                         ctx_v_3: pl.Tensor[[1, 128], pl.FP32] = pl.yield_(ctx_v_4)
                     attn_row_4: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.assemble(attn_row_iter_2, ctx_v_3, [0, v_col_0])
-                    attn_row_3, kk_11, s_2 = pl.yield_(attn_row_4, kk_12, s_4)
-                attn_front_3: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.assemble(attn_front_iter_1, attn_row_3, [b_0, 0])
-            attn_front_2, kv_cache_2, pe_cache_2 = pl.yield_(attn_front_3, kv_cache_3, pe_cache_3)
-        for b_1, (dispatch_buf_iter_1,) in pl.parallel(0, 16, 1, init_values=(dispatch_buf_0,), chunk=4):
-            target_node_0: pl.Scalar[pl.INDEX] = (b_1 + pl.cast(layer_id_0, pl.INDEX)) % 128
-            token_row_0: pl.Tensor[[1, 16384], pl.BFLOAT16] = pl.tensor.cast(pl.tensor.view(attn_front_2, [1, 16384], [b_1, 0]), target_type=pl.BFLOAT16, mode=2)
-            dispatch_buf_3: pl.Tensor[[128, 16, 16384], pl.BFLOAT16] = pl.tensor.assemble(dispatch_buf_iter_1, token_row_0, [target_node_0, b_1, 0])
-            dispatch_buf_2: pl.Tensor[[128, 16, 16384], pl.BFLOAT16] = pl.yield_(dispatch_buf_3)
+                    attn_front_5: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.assemble(attn_front_iter_3, attn_row_4, [b_0, 0])
+                    attn_front_4, attn_row_3, kk_11, s_2 = pl.yield_(attn_front_5, attn_row_4, kk_12, s_4)
+                attn_front_2, kv_cache_2, pe_cache_2 = pl.yield_(attn_front_4, kv_cache_3, pe_cache_3)
+            for b_1, (dispatch_buf_iter_1,) in pl.parallel(0, 16, 1, init_values=(dispatch_buf_0,), chunk=4):
+                target_node_0: pl.Scalar[pl.INDEX] = (b_1 + pl.cast(layer_id_0, pl.INDEX)) % 128
+                token_row_0: pl.Tensor[[1, 16384], pl.BFLOAT16] = pl.tensor.cast(pl.tensor.view(attn_front_2, [1, 16384], [b_1, 0]), target_type=pl.BFLOAT16, mode=2)
+                dispatch_buf_3: pl.Tensor[[128, 16, 16384], pl.BFLOAT16] = pl.tensor.assemble(dispatch_buf_iter_1, token_row_0, [target_node_0, b_1, 0])
+                dispatch_buf_2: pl.Tensor[[128, 16, 16384], pl.BFLOAT16] = pl.yield_(dispatch_buf_3)
         return dispatch_buf_2

@@ -150,15 +150,11 @@ def build_deepseek_v3_2_decode_front_program(
             # FRONT output: cross-node dispatch buffer
             dispatch_buf: pl.Tensor[[EP_NODES_CFG, BATCH_CFG, ATTN_OUT_CFG], pl.BF16],
         ) -> pl.Tensor[[EP_NODES_CFG, BATCH_CFG, ATTN_OUT_CFG], pl.BF16]:
-            layer_id = pl.tensor.read(layer_id_t, [0])
-
-            qr = pl.create_tensor([BATCH_CFG, Q_LORA_RANK_CFG], dtype=pl.BF16)
-            q_proj = pl.create_tensor([BATCH_CFG, NUM_HEADS_CFG * QK_HEAD_DIM_CFG], dtype=pl.BF16)
-            kv_a = pl.create_tensor([BATCH_CFG, KV_A_OUT], dtype=pl.BF16)
-            attn_front = pl.create_tensor([BATCH_CFG, ATTN_OUT_CFG], dtype=pl.FP32)
-
             # Scope 1: input RMSNorm + Q/K/V projection.
             with pl.auto_incore():
+                qr = pl.create_tensor([BATCH_CFG, Q_LORA_RANK_CFG], dtype=pl.BF16)
+                q_proj = pl.create_tensor([BATCH_CFG, NUM_HEADS_CFG * QK_HEAD_DIM_CFG], dtype=pl.BF16)
+                kv_a = pl.create_tensor([BATCH_CFG, KV_A_OUT], dtype=pl.BF16)
                 sq_sum = pl.create_tensor([BATCH_CFG, 1], dtype=pl.FP32)
                 sq_sum = pl.mul(sq_sum, 0.0)
                 # Keep an explicit local Vec pad tensor alive in this scope so
@@ -228,33 +224,35 @@ def build_deepseek_v3_2_decode_front_program(
             # - B1/B2: two-stage topk (block-local then global merge)
             # - C: sparse attention consumes merged topk immediately
             # This avoids materializing topk intermediates across kernel boundaries.
-            for b in pl.parallel(0, BATCH_CFG, 1, chunk=4):
-                ctx_len = pl.tensor.read(seq_lens, [b])
-                pos = ctx_len - 1
-                cos_row = pl.view(rope_cos, [1, QK_ROPE_HEAD_DIM_CFG], [pos, 0])
-                sin_row = pl.view(rope_sin, [1, QK_ROPE_HEAD_DIM_CFG], [pos, 0])
-                cos_lo = pl.view(cos_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, 0])
-                cos_hi = pl.view(cos_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, QK_ROPE_HEAD_DIM_CFG // 2])
-                sin_lo = pl.view(sin_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, 0])
-                sin_hi = pl.view(sin_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, QK_ROPE_HEAD_DIM_CFG // 2])
+            with pl.auto_incore():
+                layer_id = pl.tensor.read(layer_id_t, [0])
+                attn_front = pl.create_tensor([BATCH_CFG, ATTN_OUT_CFG], dtype=pl.FP32)
+                for b in pl.parallel(0, BATCH_CFG, 1, chunk=4):
+                    ctx_len = pl.tensor.read(seq_lens, [b])
+                    pos = ctx_len - 1
+                    cos_row = pl.view(rope_cos, [1, QK_ROPE_HEAD_DIM_CFG], [pos, 0])
+                    sin_row = pl.view(rope_sin, [1, QK_ROPE_HEAD_DIM_CFG], [pos, 0])
+                    cos_lo = pl.view(cos_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, 0])
+                    cos_hi = pl.view(cos_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, QK_ROPE_HEAD_DIM_CFG // 2])
+                    sin_lo = pl.view(sin_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, 0])
+                    sin_hi = pl.view(sin_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, QK_ROPE_HEAD_DIM_CFG // 2])
 
-                cache_row = b * MAX_SEQ_CFG + pos
-                kv_row = pl.cast(pl.view(kv_a, [1, KV_LORA_RANK_CFG], [b, 0]), target_type=pl.FP32)
-                kv_gamma = pl.view(kv_norm_weight, [1, KV_LORA_RANK_CFG], [0, 0])
-                kv_normed = pl.col_expand_mul(kv_row, kv_gamma)
-                pe_row = pl.cast(
-                    pl.view(kv_a, [1, QK_ROPE_HEAD_DIM_CFG], [b, KV_LORA_RANK_CFG]),
-                    target_type=pl.FP32,
-                )
-                pe_lo = pl.view(pe_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, 0])
-                pe_hi = pl.view(pe_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, QK_ROPE_HEAD_DIM_CFG // 2])
-                pe_rot = pl.create_tensor([1, QK_ROPE_HEAD_DIM_CFG], dtype=pl.FP32)
-                pe_rot = pl.assemble(pe_rot, pl.sub(pl.col_expand_mul(pe_lo, cos_lo), pl.col_expand_mul(pe_hi, sin_lo)), [0, 0])
-                pe_rot = pl.assemble(pe_rot, pl.add(pl.col_expand_mul(pe_hi, cos_hi), pl.col_expand_mul(pe_lo, sin_hi)), [0, QK_ROPE_HEAD_DIM_CFG // 2])
-                kv_cache = pl.assemble(kv_cache, pl.cast(kv_normed, target_type=pl.BF16), [cache_row, 0])
-                pe_cache = pl.assemble(pe_cache, pl.cast(pe_rot, target_type=pl.BF16), [cache_row, 0])
+                    cache_row = b * MAX_SEQ_CFG + pos
+                    kv_row = pl.cast(pl.view(kv_a, [1, KV_LORA_RANK_CFG], [b, 0]), target_type=pl.FP32)
+                    kv_gamma = pl.view(kv_norm_weight, [1, KV_LORA_RANK_CFG], [0, 0])
+                    kv_normed = pl.col_expand_mul(kv_row, kv_gamma)
+                    pe_row = pl.cast(
+                        pl.view(kv_a, [1, QK_ROPE_HEAD_DIM_CFG], [b, KV_LORA_RANK_CFG]),
+                        target_type=pl.FP32,
+                    )
+                    pe_lo = pl.view(pe_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, 0])
+                    pe_hi = pl.view(pe_row, [1, QK_ROPE_HEAD_DIM_CFG // 2], [0, QK_ROPE_HEAD_DIM_CFG // 2])
+                    pe_rot = pl.create_tensor([1, QK_ROPE_HEAD_DIM_CFG], dtype=pl.FP32)
+                    pe_rot = pl.assemble(pe_rot, pl.sub(pl.col_expand_mul(pe_lo, cos_lo), pl.col_expand_mul(pe_hi, sin_lo)), [0, 0])
+                    pe_rot = pl.assemble(pe_rot, pl.add(pl.col_expand_mul(pe_hi, cos_hi), pl.col_expand_mul(pe_lo, sin_hi)), [0, QK_ROPE_HEAD_DIM_CFG // 2])
+                    kv_cache = pl.assemble(kv_cache, pl.cast(kv_normed, target_type=pl.BF16), [cache_row, 0])
+                    pe_cache = pl.assemble(pe_cache, pl.cast(pe_rot, target_type=pl.BF16), [cache_row, 0])
 
-                with pl.auto_incore():
                     # Stage B1: block-local topk (2 blocks, each 2K candidates).
                     topk_vals = pl.create_tensor([1, INDEX_TOPK_CFG], dtype=pl.FP32)
                     topk_idx = pl.create_tensor([1, INDEX_TOPK_CFG], dtype=pl.INT32)
@@ -440,13 +438,13 @@ def build_deepseek_v3_2_decode_front_program(
                             v_part = pl.matmul(pl.cast(ctx_latent, target_type=pl.BF16), wv_tile, out_dtype=pl.FP32)
                             ctx_v = pl.assemble(ctx_v, v_part, [0, v0])
                         attn_row = pl.assemble(attn_row, ctx_v, [0, v_col])
-                    attn_front = pl.assemble(attn_front, attn_row, [b, 0])
+                        attn_front = pl.assemble(attn_front, attn_row, [b, 0])
 
-            # Scope 3: dispatch write to cross-node GM tensor and return.
-            for b in pl.parallel(0, BATCH_CFG, 1, chunk=4):
-                target_node = (b + layer_id) % EP_NODES_CFG
-                token_row = pl.cast(pl.view(attn_front, [1, ATTN_OUT_CFG], [b, 0]), target_type=pl.BF16)
-                dispatch_buf = pl.assemble(dispatch_buf, token_row, [target_node, b, 0])
+                # Scope 3: dispatch write to cross-node GM tensor and return.
+                for b in pl.parallel(0, BATCH_CFG, 1, chunk=4):
+                    target_node = (b + layer_id) % EP_NODES_CFG
+                    token_row = pl.cast(pl.view(attn_front, [1, ATTN_OUT_CFG], [b, 0]), target_type=pl.BF16)
+                    dispatch_buf = pl.assemble(dispatch_buf, token_row, [target_node, b, 0])
 
             return dispatch_buf
 

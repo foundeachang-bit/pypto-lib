@@ -5,14 +5,14 @@ import pypto.language as pl
 class DeepSeekV32PrefillBack:
     @pl.function
     def deepseek_v3_2_prefill_back_layer(self, hidden_states: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16], seq_lens: pl.Tensor[[16], pl.INT32], node_id_t: pl.Tensor[[1], pl.INT32], combine_buf: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16], wo: pl.Tensor[[16384, 7168], pl.BFLOAT16], post_rms_weight: pl.Tensor[[1, 7168], pl.FP32], w_gate: pl.Tensor[[7168, 18432], pl.BFLOAT16], w_up: pl.Tensor[[7168, 18432], pl.BFLOAT16], w_down: pl.Tensor[[18432, 7168], pl.BFLOAT16], out: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16]) -> pl.Tensor[[16, 4096, 7168], pl.BFLOAT16]:
-        node_id: pl.Scalar[pl.INT32] = pl.tensor.read(node_id_t, [0])
-        for b in pl.parallel(0, 16, 1, chunk=4):
-            seq_len_b: pl.Scalar[pl.INT32] = pl.tensor.read(seq_lens, [b])
-            tok_blocks: pl.Scalar[pl.INDEX] = (pl.cast(seq_len_b, pl.INDEX) + 4 - 1) // 4
-            for p0_idx in pl.range(0, tok_blocks, 1):
-                p0: pl.Scalar[pl.INDEX] = p0_idx * 4
-                valid_tok: pl.Scalar[pl.INDEX] = min(4, pl.cast(seq_len_b, pl.INDEX) - p0)
-                with pl.auto_incore():
+        with pl.auto_incore():
+            node_id: pl.Scalar[pl.INT32] = pl.tensor.read(node_id_t, [0])
+            for b in pl.parallel(0, 16, 1, chunk=4):
+                seq_len_b: pl.Scalar[pl.INT32] = pl.tensor.read(seq_lens, [b])
+                tok_blocks: pl.Scalar[pl.INDEX] = (pl.cast(seq_len_b, pl.INDEX) + 4 - 1) // 4
+                for p0_idx in pl.range(0, tok_blocks, 1):
+                    p0: pl.Scalar[pl.INDEX] = p0_idx * 4
+                    valid_tok: pl.Scalar[pl.INDEX] = min(4, pl.cast(seq_len_b, pl.INDEX) - p0)
                     combined_tile: pl.Tensor[[4, 16384], pl.FP32] = pl.tensor.cast(pl.tensor.view(combine_buf, [4, 16384], [node_id, b, p0, 0]), target_type=pl.FP32, mode=2)
                     resid1_tile: pl.Tensor[[4, 7168], pl.FP32] = pl.tensor.create([4, 7168], dtype=pl.FP32)
                     for ob in pl.parallel(0, 56, 1, chunk=8):

@@ -139,17 +139,17 @@ def build_deepseek_v3_2_prefill_front_program(
             w_latent_to_v: pl.Tensor[[NUM_HEADS_CFG, KV_LORA_RANK_CFG, V_HEAD_DIM_CFG], pl.BF16],
             dispatch_buf: pl.Tensor[[EP_NODES_CFG, BATCH_CFG, MAX_SEQ_CFG, ATTN_OUT_CFG], pl.BF16],
         ) -> pl.Tensor[[EP_NODES_CFG, BATCH_CFG, MAX_SEQ_CFG, ATTN_OUT_CFG], pl.BF16]:
-            layer_id = pl.tensor.read(layer_id_t, [0])
+            with pl.auto_incore():
+                layer_id = pl.tensor.read(layer_id_t, [0])
 
-            for b in pl.parallel(0, BATCH_CFG, 1, chunk=4):
-                seq_len_b = pl.tensor.read(seq_lens, [b])
-                tok_blocks = (seq_len_b + TOK_TILE - 1) // TOK_TILE
-                for p0_idx in pl.range(tok_blocks):
-                    p0 = p0_idx * TOK_TILE
-                    valid_tok = pl.min(TOK_TILE, seq_len_b - p0)
+                for b in pl.parallel(0, BATCH_CFG, 1, chunk=4):
+                    seq_len_b = pl.tensor.read(seq_lens, [b])
+                    tok_blocks = (seq_len_b + TOK_TILE - 1) // TOK_TILE
+                    for p0_idx in pl.range(tok_blocks):
+                        p0 = p0_idx * TOK_TILE
+                        valid_tok = pl.min(TOK_TILE, seq_len_b - p0)
 
-                    # Scope 1: RMSNorm + Q/K/V projections.
-                    with pl.auto_incore():
+                        # Scope 1: RMSNorm + Q/K/V projections.
                         sq_sum = pl.create_tensor([TOK_TILE, 1], dtype=pl.FP32)
                         sq_sum = pl.mul(sq_sum, 0.0)
                         # Keep an explicit local Vec pad tensor alive in this
@@ -212,14 +212,13 @@ def build_deepseek_v3_2_prefill_front_program(
                                 kv_acc = pl.add(kv_acc, pl.matmul(pl.cast(normed, target_type=pl.BF16), wkv_chunk))
                             kv_a_tile = pl.assemble(kv_a_tile, pl.cast(kv_acc, target_type=pl.BF16), [0, kv0])
 
-                    # Scope 2: RoPE + cache update + indexer topk + sparse attention.
-                    # Fusion policy (aligned with decode_front):
-                    # - Stage A/B/C all stay in ONE auto_incore scope.
-                    # - A: per-token cache write
-                    # - B1/B2: two-stage topk (block-local then global merge)
-                    # - C: sparse attention consumes merged topk immediately
-                    # This avoids materializing topk intermediates across kernel boundaries.
-                    with pl.auto_incore():
+                        # Scope 2: RoPE + cache update + indexer topk + sparse attention.
+                        # Fusion policy (aligned with decode_front):
+                        # - Stage A/B/C all stay in ONE auto_incore scope.
+                        # - A: per-token cache write
+                        # - B1/B2: two-stage topk (block-local then global merge)
+                        # - C: sparse attention consumes merged topk immediately
+                        # This avoids materializing topk intermediates across kernel boundaries.
                         attn_tile = pl.create_tensor([TOK_TILE, ATTN_OUT_CFG], dtype=pl.FP32, valid_shape=[valid_tok, ATTN_OUT_CFG])
                         attn_tile = pl.mul(attn_tile, 0.0)
                         for ti in pl.range(valid_tok):
@@ -434,12 +433,12 @@ def build_deepseek_v3_2_prefill_front_program(
                                 attn_row = pl.assemble(attn_row, ctx_v, [0, v_col])
                             attn_tile = pl.assemble(attn_tile, attn_row, [ti, 0])
 
-                        # Scope 3: dispatch writes and return after dispatch.
-                        for ti in pl.range(valid_tok):
-                            pos = p0 + ti
-                            target_node = (b + pos + layer_id) % EP_NODES_CFG
-                            token_row = pl.cast(pl.view(attn_tile, [1, ATTN_OUT_CFG], [ti, 0]), target_type=pl.BF16)
-                            dispatch_buf = pl.assemble(dispatch_buf, token_row, [target_node, b, pos, 0])
+                            # Scope 3: dispatch writes and return after dispatch.
+                            for ti in pl.range(valid_tok):
+                                pos = p0 + ti
+                                target_node = (b + pos + layer_id) % EP_NODES_CFG
+                                token_row = pl.cast(pl.view(attn_tile, [1, ATTN_OUT_CFG], [ti, 0]), target_type=pl.BF16)
+                                dispatch_buf = pl.assemble(dispatch_buf, token_row, [target_node, b, pos, 0])
 
             return dispatch_buf
 

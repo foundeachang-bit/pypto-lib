@@ -4,14 +4,14 @@ import pypto.language as pl
 @pl.program
 class DeepSeekV32PrefillFront:
     @pl.function(type=pl.FunctionType.InCore)
-    def deepseek_v3_2_prefill_front_layer_incore_0(self, b_0: pl.Scalar[pl.INDEX], hidden_states_0: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16], input_rms_weight_0: pl.Tensor[[1, 7168], pl.FP32], inv_rms_1: pl.Tensor[[4, 1], pl.FP32], k0_0: pl.Scalar[pl.INDEX], k0_iter_1_outer_l0: pl.Scalar[pl.INDEX], kb_0: pl.Scalar[pl.INDEX], kb_iter_1_outer_l0: pl.Scalar[pl.INDEX], ob_0_out: pl.Scalar[pl.INDEX], p0_0: pl.Scalar[pl.INDEX], q_norm_weight_0: pl.Tensor[[1, 1536], pl.FP32], q_proj_tile_0: pl.Tensor[[4, 128 * 192], pl.BFLOAT16], q_proj_tile_iter_1_outer_l0: pl.Tensor[[4, 128 * 192], pl.BFLOAT16], wq_a_0: pl.Tensor[[7168, 1536], pl.BFLOAT16], wq_b_0: pl.Tensor[[1536, 24576], pl.BFLOAT16], x_chunk_0: pl.Tensor[[4, 512], pl.FP32], x_chunk_iter_1_outer_l0: pl.Tensor[[4, 512], pl.FP32]) -> tuple[pl.Scalar[pl.INDEX], pl.Scalar[pl.INDEX], pl.Tensor[[4, 128 * 192], pl.BFLOAT16], pl.Tensor[[4, 512], pl.FP32]]:
+    def deepseek_v3_2_prefill_front_layer_incore_0_incore_0(self, b_0_in: pl.Scalar[pl.INDEX], b_0_out: pl.Scalar[pl.INDEX], hidden_states_0: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16], input_rms_weight_0: pl.Tensor[[1, 7168], pl.FP32], inv_rms_1: pl.Tensor[[4, 1], pl.FP32], k0_0: pl.Scalar[pl.INDEX], k0_iter_1_outer_l0: pl.Scalar[pl.INDEX], kb_0: pl.Scalar[pl.INDEX], kb_iter_1_outer_l0: pl.Scalar[pl.INDEX], ob_0_out: pl.Scalar[pl.INDEX], p0_0: pl.Scalar[pl.INDEX], q_norm_weight_0: pl.Tensor[[1, 1536], pl.FP32], q_proj_tile_0: pl.Tensor[[4, 128 * 192], pl.BFLOAT16], q_proj_tile_iter_1_outer_l0: pl.Tensor[[4, 128 * 192], pl.BFLOAT16], wq_a_0: pl.Tensor[[7168, 1536], pl.BFLOAT16], wq_b_0: pl.Tensor[[1536, 24576], pl.BFLOAT16], x_chunk_0: pl.Tensor[[4, 512], pl.FP32], x_chunk_iter_1_outer_l0: pl.Tensor[[4, 512], pl.FP32]) -> tuple[pl.Scalar[pl.INDEX], pl.Scalar[pl.INDEX], pl.Tensor[[4, 128 * 192], pl.BFLOAT16], pl.Tensor[[4, 512], pl.FP32]]:
         for ob_0_in, (k0_iter_1_outer_l1, kb_iter_1_outer_l1, q_proj_tile_iter_1_outer_l1, x_chunk_iter_1_outer_l1) in pl.parallel(0, 8, 1, init_values=(k0_iter_1_outer_l0, kb_iter_1_outer_l0, q_proj_tile_iter_1_outer_l0, x_chunk_iter_1_outer_l0)):
             q0_0: pl.Scalar[pl.INDEX] = (0 + (ob_0_out * 8 + ob_0_in) * 1) * 256
             q_acc_0: pl.Tensor[[4, 256], pl.FP32] = pl.tensor.create([4, 256], dtype=pl.FP32)
             q_acc_1: pl.Tensor[[4, 256], pl.FP32] = pl.tensor.mul(q_acc_0, 0.0)
             for kb_3, (k0_iter_3, q_acc_iter_2, x_chunk_iter_3) in pl.range(0, 14, 1, init_values=(k0_iter_1_outer_l1, q_acc_1, x_chunk_iter_1_outer_l1)):
                 k0_5: pl.Scalar[pl.INDEX] = kb_3 * 512
-                _t6: pl.Tensor[[4, 512], pl.BFLOAT16] = pl.tensor.view(hidden_states_0, [4, 512], [b_0, p0_0, k0_5])
+                _t6: pl.Tensor[[4, 512], pl.BFLOAT16] = pl.tensor.view(hidden_states_0, [4, 512], [0 + (b_0_out * 4 + b_0_in) * 1, p0_0, k0_5])
                 x_chunk_5: pl.Tensor[[4, 512], pl.FP32] = pl.tensor.cast(_t6, target_type=pl.FP32, mode=2)
                 gamma_in_0: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.view(input_rms_weight_0, [1, 512], [0, k0_5])
                 _t7: pl.Tensor[[4, 512], pl.FP32] = pl.tensor.row_expand_mul(x_chunk_5, inv_rms_1)
@@ -34,7 +34,7 @@ class DeepSeekV32PrefillFront:
             k0_iter_1_outer_l1_rv, kb_iter_1_outer_l1_rv, q_proj_tile_iter_1_outer_l1_rv, x_chunk_iter_1_outer_l1_rv = pl.yield_(k0_4, kb_3, q_proj_tile_3, x_chunk_4)
         return k0_iter_1_outer_l1_rv, kb_iter_1_outer_l1_rv, q_proj_tile_iter_1_outer_l1_rv, x_chunk_iter_1_outer_l1_rv
     @pl.function(type=pl.FunctionType.InCore)
-    def deepseek_v3_2_prefill_front_layer_incore_1(self, attn_row_1: pl.Tensor[[1, 16384], pl.FP32], attn_row_iter_2_outer_l0: pl.Tensor[[1, 16384], pl.FP32], b_0: pl.Scalar[pl.INDEX], cos_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32], cos_lo_0: pl.Tensor[[1, 64 // 2], pl.FP32], ctx_len_0: pl.Scalar[pl.INDEX], h_0_out: pl.Scalar[pl.INDEX], kk_8: pl.Scalar[pl.INDEX], kk_iter_10_outer_l0: pl.Scalar[pl.INDEX], kv_cache_7: pl.Tensor[[65536, 512], pl.BFLOAT16], pe_cache_7: pl.Tensor[[65536, 64], pl.BFLOAT16], q_proj_tile_iter_1_outer_l0_rv: pl.Tensor[[4, 128 * 192], pl.BFLOAT16], s_0: pl.Scalar[pl.INDEX], s_iter_1_outer_l0: pl.Scalar[pl.INDEX], sin_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32], sin_lo_0: pl.Tensor[[1, 64 // 2], pl.FP32], ti_0: pl.Scalar[pl.INDEX], topk_idx_6: pl.Tensor[[1, 2048], pl.INDEX], w_latent_to_v_0: pl.Tensor[[128, 512, 128], pl.BFLOAT16], w_q_nope_to_latent_0: pl.Tensor[[128, 128, 512], pl.BFLOAT16]) -> tuple[pl.Tensor[[1, 16384], pl.FP32], pl.Scalar[pl.INDEX], pl.Scalar[pl.INDEX]]:
+    def deepseek_v3_2_prefill_front_layer_incore_0_incore_1(self, attn_row_1: pl.Tensor[[1, 16384], pl.FP32], attn_row_iter_2_outer_l0: pl.Tensor[[1, 16384], pl.FP32], b_0_in: pl.Scalar[pl.INDEX], b_0_out: pl.Scalar[pl.INDEX], cos_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32], cos_lo_0: pl.Tensor[[1, 64 // 2], pl.FP32], ctx_len_0: pl.Scalar[pl.INDEX], h_0_out: pl.Scalar[pl.INDEX], kk_8: pl.Scalar[pl.INDEX], kk_iter_10_outer_l0: pl.Scalar[pl.INDEX], kv_cache_7: pl.Tensor[[65536, 512], pl.BFLOAT16], pe_cache_7: pl.Tensor[[65536, 64], pl.BFLOAT16], q_proj_tile_iter_1_outer_l0_rv: pl.Tensor[[4, 128 * 192], pl.BFLOAT16], s_0: pl.Scalar[pl.INDEX], s_iter_1_outer_l0: pl.Scalar[pl.INDEX], sin_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32], sin_lo_0: pl.Tensor[[1, 64 // 2], pl.FP32], ti_0: pl.Scalar[pl.INDEX], topk_idx_6: pl.Tensor[[1, 2048], pl.INDEX], w_latent_to_v_0: pl.Tensor[[128, 512, 128], pl.BFLOAT16], w_q_nope_to_latent_0: pl.Tensor[[128, 128, 512], pl.BFLOAT16]) -> tuple[pl.Tensor[[1, 16384], pl.FP32], pl.Scalar[pl.INDEX], pl.Scalar[pl.INDEX]]:
         for h_0_in, (attn_row_iter_2_outer_l1, kk_iter_10_outer_l1, s_iter_1_outer_l1) in pl.parallel(0, 8, 1, init_values=(attn_row_iter_2_outer_l0, kk_iter_10_outer_l0, s_iter_1_outer_l0)):
             q_col_0: pl.Scalar[pl.INDEX] = (0 + (h_0_out * 8 + h_0_in) * 1) * 192
             _t42: pl.Tensor[[1, 128], pl.BFLOAT16] = pl.tensor.view(q_proj_tile_iter_1_outer_l0_rv, [1, 128], [ti_0, q_col_0])
@@ -65,7 +65,7 @@ class DeepSeekV32PrefillFront:
             for kk_12, (li_iter_2, mi_iter_2, oi_iter_2, s_iter_3) in pl.range(0, sparse_k_0, 1, init_values=(li_1, mi_1, oi_1, s_iter_1_outer_l1)):
                 s_5: pl.Scalar[pl.INDEX] = pl.tensor.read(topk_idx_6, [0, kk_12])
                 if s_5 >= 0:
-                    cache_s_1: pl.Scalar[pl.INDEX] = b_0 * 4096 + s_5
+                    cache_s_1: pl.Scalar[pl.INDEX] = (0 + (b_0_out * 4 + b_0_in) * 1) * 4096 + s_5
                     _t52: pl.Tensor[[1, 512], pl.BFLOAT16] = pl.tensor.view(kv_cache_7, [1, 512], [cache_s_1, 0])
                     kv_s_1: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.cast(_t52, target_type=pl.FP32, mode=2)
                     _t53: pl.Tensor[[1, 64], pl.BFLOAT16] = pl.tensor.view(pe_cache_7, [1, 64], [cache_s_1, 0])
@@ -117,13 +117,12 @@ class DeepSeekV32PrefillFront:
             attn_row_4: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.assemble(attn_row_iter_2_outer_l1, ctx_v_3, [0, v_col_0])
             attn_row_iter_2_outer_l1_rv, kk_iter_10_outer_l1_rv, s_iter_1_outer_l1_rv = pl.yield_(attn_row_4, kk_12, s_4)
         return attn_row_iter_2_outer_l1_rv, kk_iter_10_outer_l1_rv, s_iter_1_outer_l1_rv
-    @pl.function(type=pl.FunctionType.Orchestration)
-    def deepseek_v3_2_prefill_front_layer(self, hidden_states_0: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16], seq_lens_0: pl.Tensor[[16], pl.INT32], layer_id_t_0: pl.Tensor[[1], pl.INT32], rope_cos_0: pl.Tensor[[4096, 64], pl.FP32], rope_sin_0: pl.Tensor[[4096, 64], pl.FP32], kv_cache_0: pl.Tensor[[65536, 512], pl.BFLOAT16], pe_cache_0: pl.Tensor[[65536, 64], pl.BFLOAT16], input_rms_weight_0: pl.Tensor[[1, 7168], pl.FP32], wq_a_0: pl.Tensor[[7168, 1536], pl.BFLOAT16], q_norm_weight_0: pl.Tensor[[1, 1536], pl.FP32], wq_b_0: pl.Tensor[[1536, 24576], pl.BFLOAT16], wkv_a_0: pl.Tensor[[7168, 576], pl.BFLOAT16], kv_norm_weight_0: pl.Tensor[[1, 512], pl.FP32], w_q_nope_to_latent_0: pl.Tensor[[128, 128, 512], pl.BFLOAT16], w_latent_to_v_0: pl.Tensor[[128, 512, 128], pl.BFLOAT16], dispatch_buf_0: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16]) -> pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16]:
-        layer_id_0: pl.Scalar[pl.INT32] = pl.tensor.read(layer_id_t_0, [0])
-        for b_0, (dispatch_buf_iter_1, kv_cache_iter_1, pe_cache_iter_1) in pl.parallel(0, 16, 1, init_values=(dispatch_buf_0, kv_cache_0, pe_cache_0), chunk=4):
-            seq_len_b_0: pl.Scalar[pl.INT32] = pl.tensor.read(seq_lens_0, [b_0])
+    @pl.function(type=pl.FunctionType.InCore)
+    def deepseek_v3_2_prefill_front_layer_incore_0(self, b_0_out: pl.Scalar[pl.INDEX], dispatch_buf_0: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16], dispatch_buf_iter_1_outer_l0: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16], hidden_states_0: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16], input_rms_weight_0: pl.Tensor[[1, 7168], pl.FP32], k0_2: pl.Scalar[pl.INDEX], kb_2: pl.Scalar[pl.INDEX], kv_cache_0: pl.Tensor[[65536, 512], pl.BFLOAT16], kv_cache_iter_1_outer_l0: pl.Tensor[[65536, 512], pl.BFLOAT16], kv_norm_weight_0: pl.Tensor[[1, 512], pl.FP32], layer_id_0: pl.Scalar[pl.INT32], pe_cache_0: pl.Tensor[[65536, 64], pl.BFLOAT16], pe_cache_iter_1_outer_l0: pl.Tensor[[65536, 64], pl.BFLOAT16], q_norm_weight_0: pl.Tensor[[1, 1536], pl.FP32], rope_cos_0: pl.Tensor[[4096, 64], pl.FP32], rope_sin_0: pl.Tensor[[4096, 64], pl.FP32], seq_lens_0: pl.Tensor[[16], pl.INT32], w_latent_to_v_0: pl.Tensor[[128, 512, 128], pl.BFLOAT16], w_q_nope_to_latent_0: pl.Tensor[[128, 128, 512], pl.BFLOAT16], wkv_a_0: pl.Tensor[[7168, 576], pl.BFLOAT16], wq_a_0: pl.Tensor[[7168, 1536], pl.BFLOAT16], wq_b_0: pl.Tensor[[1536, 24576], pl.BFLOAT16], x_chunk_2: pl.Tensor[[4, 512], pl.FP32]) -> tuple[pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16], pl.Tensor[[65536, 512], pl.BFLOAT16], pl.Tensor[[65536, 64], pl.BFLOAT16]]:
+        for b_0_in, (dispatch_buf_iter_1_outer_l1, kv_cache_iter_1_outer_l1, pe_cache_iter_1_outer_l1) in pl.parallel(0, 4, 1, init_values=(dispatch_buf_iter_1_outer_l0, kv_cache_iter_1_outer_l0, pe_cache_iter_1_outer_l0)):
+            seq_len_b_0: pl.Scalar[pl.INT32] = pl.tensor.read(seq_lens_0, [0 + (b_0_out * 4 + b_0_in) * 1])
             tok_blocks_0: pl.Scalar[pl.INDEX] = (pl.cast(seq_len_b_0, pl.INDEX) + 4 - 1) // 4
-            for p0_idx_0, (dispatch_buf_iter_3, kv_cache_iter_3, pe_cache_iter_3) in pl.range(0, tok_blocks_0, 1, init_values=(dispatch_buf_iter_1, kv_cache_iter_1, pe_cache_iter_1)):
+            for p0_idx_0, (dispatch_buf_iter_3, kv_cache_iter_3, pe_cache_iter_3) in pl.range(0, tok_blocks_0, 1, init_values=(dispatch_buf_iter_1_outer_l1, kv_cache_iter_1_outer_l1, pe_cache_iter_1_outer_l1)):
                 p0_0: pl.Scalar[pl.INDEX] = p0_idx_0 * 4
                 valid_tok_0: pl.Scalar[pl.INDEX] = min(4, pl.cast(seq_len_b_0, pl.INDEX) - p0_0)
                 sq_sum_0: pl.Tensor[[4, 1], pl.FP32] = pl.tensor.create([4, 1], dtype=pl.FP32)
@@ -134,7 +133,7 @@ class DeepSeekV32PrefillFront:
                 usage_pad_sum_0: pl.Tensor[[4, 1], pl.FP32] = pl.tensor.row_sum(usage_pad_fp_0)
                 for kb_0, (sq_sum_iter_2,) in pl.range(0, 14, 1, init_values=(sq_sum_1,)):
                     k0_0: pl.Scalar[pl.INDEX] = kb_0 * 512
-                    _t0: pl.Tensor[[4, 512], pl.BFLOAT16] = pl.tensor.view(hidden_states_0, [4, 512], [b_0, p0_0, k0_0])
+                    _t0: pl.Tensor[[4, 512], pl.BFLOAT16] = pl.tensor.view(hidden_states_0, [4, 512], [0 + (b_0_out * 4 + b_0_in) * 1, p0_0, k0_0])
                     x_chunk_0: pl.Tensor[[4, 512], pl.FP32] = pl.tensor.cast(_t0, target_type=pl.FP32, mode=2)
                     _t1: pl.Tensor[[4, 512], pl.FP32] = pl.tensor.mul(x_chunk_0, x_chunk_0)
                     _t2: pl.Tensor[[4, 1], pl.FP32] = pl.tensor.row_sum(_t1)
@@ -148,7 +147,7 @@ class DeepSeekV32PrefillFront:
                 q_proj_tile_0: pl.Tensor[[4, 128 * 192], pl.BFLOAT16] = pl.tensor.create([4, 128 * 192], dtype=pl.BFLOAT16)
                 kv_a_tile_0: pl.Tensor[[4, 576], pl.BFLOAT16] = pl.tensor.create([4, 576], dtype=pl.BFLOAT16)
                 for ob_0_out, (k0_iter_1_outer_l0, kb_iter_1_outer_l0, q_proj_tile_iter_1_outer_l0, x_chunk_iter_1_outer_l0) in pl.range(0, 12, 1, init_values=(k0_0, kb_0, q_proj_tile_0, x_chunk_0)):
-                    ret: pl.Tuple([pl.Scalar[pl.INDEX], pl.Scalar[pl.INDEX], pl.Tensor[[4, 128 * 192], pl.BFLOAT16], pl.Tensor[[4, 512], pl.FP32]]) = self.deepseek_v3_2_prefill_front_layer_incore_0(b_0, hidden_states_0, input_rms_weight_0, inv_rms_1, k0_0, k0_iter_1_outer_l0, kb_0, kb_iter_1_outer_l0, ob_0_out, p0_0, q_norm_weight_0, q_proj_tile_0, q_proj_tile_iter_1_outer_l0, wq_a_0, wq_b_0, x_chunk_0, x_chunk_iter_1_outer_l0)
+                    ret: pl.Tuple([pl.Scalar[pl.INDEX], pl.Scalar[pl.INDEX], pl.Tensor[[4, 128 * 192], pl.BFLOAT16], pl.Tensor[[4, 512], pl.FP32]]) = self.deepseek_v3_2_prefill_front_layer_incore_0_incore_0(b_0_in, b_0_out, hidden_states_0, input_rms_weight_0, inv_rms_1, k0_0, k0_iter_1_outer_l0, kb_0, kb_iter_1_outer_l0, ob_0_out, p0_0, q_norm_weight_0, q_proj_tile_0, q_proj_tile_iter_1_outer_l0, wq_a_0, wq_b_0, x_chunk_0, x_chunk_iter_1_outer_l0)
                     k0_iter_1_outer_l1_rv: pl.Scalar[pl.INDEX] = ret[0]
                     kb_iter_1_outer_l1_rv: pl.Scalar[pl.INDEX] = ret[1]
                     q_proj_tile_iter_1_outer_l1_rv: pl.Tensor[[4, 128 * 192], pl.BFLOAT16] = ret[2]
@@ -160,7 +159,7 @@ class DeepSeekV32PrefillFront:
                     kv_acc_1: pl.Tensor[[4, 128], pl.FP32] = pl.tensor.mul(kv_acc_0, 0.0)
                     for kb_6, (k0_iter_8, kv_acc_iter_2, normed_iter_3, x_chunk_iter_8) in pl.range(0, 14, 1, init_values=(k0_iter_6_rem, kv_acc_1, normed_iter_1_rem, x_chunk_iter_6_rem)):
                         k0_10: pl.Scalar[pl.INDEX] = kb_6 * 512
-                        _t12: pl.Tensor[[4, 512], pl.BFLOAT16] = pl.tensor.view(hidden_states_0, [4, 512], [b_0, p0_0, k0_10])
+                        _t12: pl.Tensor[[4, 512], pl.BFLOAT16] = pl.tensor.view(hidden_states_0, [4, 512], [0 + (b_0_out * 4 + b_0_in) * 1, p0_0, k0_10])
                         x_chunk_10: pl.Tensor[[4, 512], pl.FP32] = pl.tensor.cast(_t12, target_type=pl.FP32, mode=2)
                         gamma_0: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.view(input_rms_weight_0, [1, 512], [0, k0_10])
                         _t13: pl.Tensor[[4, 512], pl.FP32] = pl.tensor.row_expand_mul(x_chunk_10, inv_rms_1)
@@ -175,7 +174,7 @@ class DeepSeekV32PrefillFront:
                     k0_iter_6_rem_rv, kb_iter_4_rem_rv, kv_a_tile_iter_1_rem_rv, normed_iter_1_rem_rv, x_chunk_iter_6_rem_rv = pl.yield_(k0_9, kb_6, kv_a_tile_3, normed_4, x_chunk_9)
                 attn_tile_0: pl.Tensor[[4, 16384], pl.FP32] = pl.tensor.create([4, 16384], dtype=pl.FP32)
                 attn_tile_1: pl.Tensor[[4, 16384], pl.FP32] = pl.tensor.mul(attn_tile_0, 0.0)
-                for ti_0, (attn_tile_iter_2, kv_cache_iter_5, pe_cache_iter_5) in pl.range(0, valid_tok_0, 1, init_values=(attn_tile_1, kv_cache_iter_3, pe_cache_iter_3)):
+                for ti_0, (attn_tile_iter_2, dispatch_buf_iter_5, kv_cache_iter_5, pe_cache_iter_5) in pl.range(0, valid_tok_0, 1, init_values=(attn_tile_1, dispatch_buf_iter_3, kv_cache_iter_3, pe_cache_iter_3)):
                     pos_0: pl.Scalar[pl.INDEX] = p0_0 + ti_0
                     ctx_len_0: pl.Scalar[pl.INDEX] = pos_0 + 1
                     cos_row_0: pl.Tensor[[1, 64], pl.FP32] = pl.tensor.view(rope_cos_0, [1, 64], [pos_0, 0])
@@ -184,7 +183,7 @@ class DeepSeekV32PrefillFront:
                     cos_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(cos_row_0, [1, 64 // 2], [0, 64 // 2])
                     sin_lo_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(sin_row_0, [1, 64 // 2], [0, 0])
                     sin_hi_0: pl.Tensor[[1, 64 // 2], pl.FP32] = pl.tensor.view(sin_row_0, [1, 64 // 2], [0, 64 // 2])
-                    cache_row_0: pl.Scalar[pl.INDEX] = b_0 * 4096 + pos_0
+                    cache_row_0: pl.Scalar[pl.INDEX] = (0 + (b_0_out * 4 + b_0_in) * 1) * 4096 + pos_0
                     _t17: pl.Tensor[[1, 512], pl.BFLOAT16] = pl.tensor.view(kv_a_tile_iter_1_rem_rv, [1, 512], [ti_0, 0])
                     kv_row_0: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.cast(_t17, target_type=pl.FP32, mode=2)
                     kv_gamma_0: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.view(kv_norm_weight_0, [1, 512], [0, 0])
@@ -248,7 +247,7 @@ class DeepSeekV32PrefillFront:
                         for ss_0, (blk_topk_idx_iter_8, blk_topk_vals_iter_4, kk_iter_3) in pl.range(0, 2048, 1, init_values=(blk_topk_idx_iter_6, blk_topk_vals_iter_2, kk_iter_1)):
                             s_0: pl.Scalar[pl.INDEX] = blk_start_0 + ss_0
                             if s_0 < blk_end_0:
-                                cache_s_0: pl.Scalar[pl.INDEX] = b_0 * 4096 + s_0
+                                cache_s_0: pl.Scalar[pl.INDEX] = (0 + (b_0_out * 4 + b_0_in) * 1) * 4096 + s_0
                                 _t37: pl.Tensor[[1, 512], pl.BFLOAT16] = pl.tensor.view(kv_cache_7, [1, 512], [cache_s_0, 0])
                                 kv_s_0: pl.Tensor[[1, 512], pl.FP32] = pl.tensor.cast(_t37, target_type=pl.FP32, mode=2)
                                 _t38: pl.Tensor[[1, 64], pl.BFLOAT16] = pl.tensor.view(pe_cache_7, [1, 64], [cache_s_0, 0])
@@ -356,20 +355,30 @@ class DeepSeekV32PrefillFront:
                     attn_row_0: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.create([1, 16384], dtype=pl.FP32)
                     attn_row_1: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.mul(attn_row_0, 0.0)
                     for h_0_out, (attn_row_iter_2_outer_l0, kk_iter_10_outer_l0, s_iter_1_outer_l0) in pl.range(0, 16, 1, init_values=(attn_row_1, kk_8, s_0)):
-                        ret: pl.Tuple([pl.Tensor[[1, 16384], pl.FP32], pl.Scalar[pl.INDEX], pl.Scalar[pl.INDEX]]) = self.deepseek_v3_2_prefill_front_layer_incore_1(attn_row_1, attn_row_iter_2_outer_l0, b_0, cos_hi_0, cos_lo_0, ctx_len_0, h_0_out, kk_8, kk_iter_10_outer_l0, kv_cache_7, pe_cache_7, q_proj_tile_iter_1_outer_l0_rv, s_0, s_iter_1_outer_l0, sin_hi_0, sin_lo_0, ti_0, topk_idx_6, w_latent_to_v_0, w_q_nope_to_latent_0)
+                        ret: pl.Tuple([pl.Tensor[[1, 16384], pl.FP32], pl.Scalar[pl.INDEX], pl.Scalar[pl.INDEX]]) = self.deepseek_v3_2_prefill_front_layer_incore_0_incore_1(attn_row_1, attn_row_iter_2_outer_l0, b_0_in, b_0_out, cos_hi_0, cos_lo_0, ctx_len_0, h_0_out, kk_8, kk_iter_10_outer_l0, kv_cache_7, pe_cache_7, q_proj_tile_iter_1_outer_l0_rv, s_0, s_iter_1_outer_l0, sin_hi_0, sin_lo_0, ti_0, topk_idx_6, w_latent_to_v_0, w_q_nope_to_latent_0)
                         attn_row_iter_2_outer_l1_rv: pl.Tensor[[1, 16384], pl.FP32] = ret[0]
                         kk_iter_10_outer_l1_rv: pl.Scalar[pl.INDEX] = ret[1]
                         s_iter_1_outer_l1_rv: pl.Scalar[pl.INDEX] = ret[2]
                         attn_row_iter_2_outer_l0_rv, kk_iter_10_outer_l0_rv, s_iter_1_outer_l0_rv = pl.yield_(attn_row_iter_2_outer_l1_rv, kk_iter_10_outer_l1_rv, s_iter_1_outer_l1_rv)
                     attn_tile_4: pl.Tensor[[4, 16384], pl.FP32] = pl.tensor.assemble(attn_tile_iter_2, attn_row_iter_2_outer_l0_rv, [ti_0, 0])
-                    attn_tile_3, kv_cache_6, pe_cache_6 = pl.yield_(attn_tile_4, kv_cache_7, pe_cache_7)
-                for ti_1, (dispatch_buf_iter_5, pos_iter_1) in pl.range(0, valid_tok_0, 1, init_values=(dispatch_buf_iter_3, pos_0)):
-                    pos_3: pl.Scalar[pl.INDEX] = p0_0 + ti_1
-                    target_node_0: pl.Scalar[pl.INDEX] = (b_0 + pos_3 + pl.cast(layer_id_0, pl.INDEX)) % 128
-                    _t65: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.view(attn_tile_3, [1, 16384], [ti_1, 0])
-                    token_row_0: pl.Tensor[[1, 16384], pl.BFLOAT16] = pl.tensor.cast(_t65, target_type=pl.BFLOAT16, mode=2)
-                    dispatch_buf_7: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16] = pl.tensor.assemble(dispatch_buf_iter_5, token_row_0, [target_node_0, b_0, pos_3, 0])
-                    dispatch_buf_6, pos_2 = pl.yield_(dispatch_buf_7, pos_3)
+                    for ti_1, (dispatch_buf_iter_7, pos_iter_1) in pl.range(0, valid_tok_0, 1, init_values=(dispatch_buf_iter_5, pos_0)):
+                        pos_3: pl.Scalar[pl.INDEX] = p0_0 + ti_1
+                        target_node_0: pl.Scalar[pl.INDEX] = (0 + (b_0_out * 4 + b_0_in) * 1 + pos_3 + pl.cast(layer_id_0, pl.INDEX)) % 128
+                        _t65: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.view(attn_tile_4, [1, 16384], [ti_1, 0])
+                        token_row_0: pl.Tensor[[1, 16384], pl.BFLOAT16] = pl.tensor.cast(_t65, target_type=pl.BFLOAT16, mode=2)
+                        dispatch_buf_9: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16] = pl.tensor.assemble(dispatch_buf_iter_7, token_row_0, [target_node_0, 0 + (b_0_out * 4 + b_0_in) * 1, pos_3, 0])
+                        dispatch_buf_8, pos_2 = pl.yield_(dispatch_buf_9, pos_3)
+                    attn_tile_3, dispatch_buf_6, kv_cache_6, pe_cache_6 = pl.yield_(attn_tile_4, dispatch_buf_8, kv_cache_7, pe_cache_7)
                 dispatch_buf_4, kv_cache_4, pe_cache_4 = pl.yield_(dispatch_buf_6, kv_cache_6, pe_cache_6)
-            dispatch_buf_2, kv_cache_2, pe_cache_2 = pl.yield_(dispatch_buf_4, kv_cache_4, pe_cache_4)
-        return dispatch_buf_2
+            dispatch_buf_iter_1_outer_l1_rv, kv_cache_iter_1_outer_l1_rv, pe_cache_iter_1_outer_l1_rv = pl.yield_(dispatch_buf_4, kv_cache_4, pe_cache_4)
+        return dispatch_buf_iter_1_outer_l1_rv, kv_cache_iter_1_outer_l1_rv, pe_cache_iter_1_outer_l1_rv
+    @pl.function(type=pl.FunctionType.Orchestration)
+    def deepseek_v3_2_prefill_front_layer(self, hidden_states_0: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16], seq_lens_0: pl.Tensor[[16], pl.INT32], layer_id_t_0: pl.Tensor[[1], pl.INT32], rope_cos_0: pl.Tensor[[4096, 64], pl.FP32], rope_sin_0: pl.Tensor[[4096, 64], pl.FP32], kv_cache_0: pl.Tensor[[65536, 512], pl.BFLOAT16], pe_cache_0: pl.Tensor[[65536, 64], pl.BFLOAT16], input_rms_weight_0: pl.Tensor[[1, 7168], pl.FP32], wq_a_0: pl.Tensor[[7168, 1536], pl.BFLOAT16], q_norm_weight_0: pl.Tensor[[1, 1536], pl.FP32], wq_b_0: pl.Tensor[[1536, 24576], pl.BFLOAT16], wkv_a_0: pl.Tensor[[7168, 576], pl.BFLOAT16], kv_norm_weight_0: pl.Tensor[[1, 512], pl.FP32], w_q_nope_to_latent_0: pl.Tensor[[128, 128, 512], pl.BFLOAT16], w_latent_to_v_0: pl.Tensor[[128, 512, 128], pl.BFLOAT16], dispatch_buf_0: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16]) -> pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16]:
+        layer_id_0: pl.Scalar[pl.INT32] = pl.tensor.read(layer_id_t_0, [0])
+        for b_0_out, (dispatch_buf_iter_1_outer_l0, kv_cache_iter_1_outer_l0, pe_cache_iter_1_outer_l0) in pl.range(0, 4, 1, init_values=(dispatch_buf_0, kv_cache_0, pe_cache_0)):
+            ret: pl.Tuple([pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16], pl.Tensor[[65536, 512], pl.BFLOAT16], pl.Tensor[[65536, 64], pl.BFLOAT16]]) = self.deepseek_v3_2_prefill_front_layer_incore_0(b_0_out, dispatch_buf_0, dispatch_buf_iter_1_outer_l0, hidden_states_0, input_rms_weight_0, k0_2, kb_2, kv_cache_0, kv_cache_iter_1_outer_l0, kv_norm_weight_0, layer_id_0, pe_cache_0, pe_cache_iter_1_outer_l0, q_norm_weight_0, rope_cos_0, rope_sin_0, seq_lens_0, w_latent_to_v_0, w_q_nope_to_latent_0, wkv_a_0, wq_a_0, wq_b_0, x_chunk_2)
+            dispatch_buf_iter_1_outer_l1_rv: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16] = ret[0]
+            kv_cache_iter_1_outer_l1_rv: pl.Tensor[[65536, 512], pl.BFLOAT16] = ret[1]
+            pe_cache_iter_1_outer_l1_rv: pl.Tensor[[65536, 64], pl.BFLOAT16] = ret[2]
+            dispatch_buf_iter_1_outer_l0_rv, kv_cache_iter_1_outer_l0_rv, pe_cache_iter_1_outer_l0_rv = pl.yield_(dispatch_buf_iter_1_outer_l1_rv, kv_cache_iter_1_outer_l1_rv, pe_cache_iter_1_outer_l1_rv)
+        return dispatch_buf_iter_1_outer_l0_rv

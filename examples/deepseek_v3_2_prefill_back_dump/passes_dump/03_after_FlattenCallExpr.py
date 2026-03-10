@@ -5,14 +5,14 @@ import pypto.language as pl
 class DeepSeekV32PrefillBack:
     @pl.function
     def deepseek_v3_2_prefill_back_layer(self, hidden_states_0: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16], seq_lens_0: pl.Tensor[[16], pl.INT32], node_id_t_0: pl.Tensor[[1], pl.INT32], combine_buf_0: pl.Tensor[[128, 16, 4096, 16384], pl.BFLOAT16], wo_0: pl.Tensor[[16384, 7168], pl.BFLOAT16], post_rms_weight_0: pl.Tensor[[1, 7168], pl.FP32], w_gate_0: pl.Tensor[[7168, 18432], pl.BFLOAT16], w_up_0: pl.Tensor[[7168, 18432], pl.BFLOAT16], w_down_0: pl.Tensor[[18432, 7168], pl.BFLOAT16], out_0: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16]) -> pl.Tensor[[16, 4096, 7168], pl.BFLOAT16]:
-        node_id_0: pl.Scalar[pl.INT32] = pl.tensor.read(node_id_t_0, [0])
-        for b_0, (out_iter_1,) in pl.parallel(0, 16, 1, init_values=(out_0,), chunk=4):
-            seq_len_b_0: pl.Scalar[pl.INT32] = pl.tensor.read(seq_lens_0, [b_0])
-            tok_blocks_0: pl.Scalar[pl.INDEX] = (pl.cast(seq_len_b_0, pl.INDEX) + 4 - 1) // 4
-            for p0_idx_0, (out_iter_3,) in pl.range(0, tok_blocks_0, 1, init_values=(out_iter_1,)):
-                p0_0: pl.Scalar[pl.INDEX] = p0_idx_0 * 4
-                valid_tok_0: pl.Scalar[pl.INDEX] = min(4, pl.cast(seq_len_b_0, pl.INDEX) - p0_0)
-                with pl.auto_incore():
+        with pl.auto_incore():
+            node_id_0: pl.Scalar[pl.INT32] = pl.tensor.read(node_id_t_0, [0])
+            for b_0, (out_iter_1,) in pl.parallel(0, 16, 1, init_values=(out_0,), chunk=4):
+                seq_len_b_0: pl.Scalar[pl.INT32] = pl.tensor.read(seq_lens_0, [b_0])
+                tok_blocks_0: pl.Scalar[pl.INDEX] = (pl.cast(seq_len_b_0, pl.INDEX) + 4 - 1) // 4
+                for p0_idx_0, (out_iter_3,) in pl.range(0, tok_blocks_0, 1, init_values=(out_iter_1,)):
+                    p0_0: pl.Scalar[pl.INDEX] = p0_idx_0 * 4
+                    valid_tok_0: pl.Scalar[pl.INDEX] = min(4, pl.cast(seq_len_b_0, pl.INDEX) - p0_0)
                     _t0: pl.Tensor[[4, 16384], pl.BFLOAT16] = pl.tensor.view(combine_buf_0, [4, 16384], [node_id_0, b_0, p0_0, 0])
                     combined_tile_0: pl.Tensor[[4, 16384], pl.FP32] = pl.tensor.cast(_t0, target_type=pl.FP32, mode=2)
                     resid1_tile_0: pl.Tensor[[4, 7168], pl.FP32] = pl.tensor.create([4, 7168], dtype=pl.FP32)
@@ -97,6 +97,6 @@ class DeepSeekV32PrefillBack:
                         _t20: pl.Tensor[[4, 128], pl.BFLOAT16] = pl.tensor.cast(down_acc_0, target_type=pl.BFLOAT16, mode=2)
                         out_7: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16] = pl.tensor.assemble(out_iter_5, _t20, [b_0, p0_0, o0_6])
                         o0_5, out_6 = pl.yield_(o0_6, out_7)
-                out_4: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16] = pl.yield_(out_6)
-            out_2: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16] = pl.yield_(out_4)
+                    out_4: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16] = pl.yield_(out_6)
+                out_2: pl.Tensor[[16, 4096, 7168], pl.BFLOAT16] = pl.yield_(out_4)
         return out_2

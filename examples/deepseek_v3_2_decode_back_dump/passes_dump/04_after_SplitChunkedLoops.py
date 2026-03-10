@@ -5,14 +5,16 @@ import pypto.language as pl
 class DeepSeekV32DecodeBack:
     @pl.function
     def deepseek_v3_2_decode_back_layer(self, hidden_states_0: pl.Tensor[[16, 7168], pl.BFLOAT16], node_id_t_0: pl.Tensor[[1], pl.INT32], combine_buf_0: pl.Tensor[[128, 16, 16384], pl.BFLOAT16], wo_0: pl.Tensor[[16384, 7168], pl.BFLOAT16], post_rms_weight_0: pl.Tensor[[1, 7168], pl.FP32], w_gate_0: pl.Tensor[[7168, 18432], pl.BFLOAT16], w_up_0: pl.Tensor[[7168, 18432], pl.BFLOAT16], w_down_0: pl.Tensor[[18432, 7168], pl.BFLOAT16], out_0: pl.Tensor[[16, 7168], pl.BFLOAT16]) -> pl.Tensor[[16, 7168], pl.BFLOAT16]:
-        node_id_0: pl.Scalar[pl.INT32] = pl.tensor.read(node_id_t_0, [0])
-        combined_0: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.create([16, 16384], dtype=pl.FP32)
-        for b_0, (combined_iter_1,) in pl.parallel(0, 16, 1, init_values=(combined_0,), chunk=4):
-            _t0: pl.Tensor[[1, 16384], pl.BFLOAT16] = pl.tensor.view(combine_buf_0, [1, 16384], [node_id_0, b_0, 0])
-            row_0: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.cast(_t0, target_type=pl.FP32, mode=2)
-            combined_3: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.assemble(combined_iter_1, row_0, [b_0, 0])
-            combined_2: pl.Tensor[[16, 16384], pl.FP32] = pl.yield_(combined_3)
         with pl.auto_incore():
+            node_id_0: pl.Scalar[pl.INT32] = pl.tensor.read(node_id_t_0, [0])
+            combined_0: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.create([16, 16384], dtype=pl.FP32)
+            for b_0_out, (combined_iter_1_outer,) in pl.range(0, 4, 1, init_values=(combined_0,)):
+                for b_0_in, (combined_iter_1_inner,) in pl.parallel(0, 4, 1, init_values=(combined_iter_1_outer,)):
+                    _t0: pl.Tensor[[1, 16384], pl.BFLOAT16] = pl.tensor.view(combine_buf_0, [1, 16384], [node_id_0, 0 + (b_0_out * 4 + b_0_in) * 1, 0])
+                    row_0: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.cast(_t0, target_type=pl.FP32, mode=2)
+                    combined_3: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.assemble(combined_iter_1_inner, row_0, [0 + (b_0_out * 4 + b_0_in) * 1, 0])
+                    combined_iter_1_inner_rv: pl.Tensor[[16, 16384], pl.FP32] = pl.yield_(combined_3)
+                combined_iter_1_outer_rv: pl.Tensor[[16, 16384], pl.FP32] = pl.yield_(combined_iter_1_inner_rv)
             for b0_0, (out_iter_1,) in pl.range(0, 16, 4, init_values=(out_0,)):
                 resid1_tile_0: pl.Tensor[[4, 7168], pl.FP32] = pl.tensor.create([4, 7168], dtype=pl.FP32)
                 for ob_0_out, (resid1_tile_iter_1_outer,) in pl.range(0, 7, 1, init_values=(resid1_tile_0,)):
@@ -22,7 +24,7 @@ class DeepSeekV32DecodeBack:
                         o_acc_1: pl.Tensor[[4, 128], pl.FP32] = pl.tensor.mul(o_acc_0, 0.0)
                         for kb_0, (o_acc_iter_2,) in pl.range(0, 32, 1, init_values=(o_acc_1,)):
                             k0_0: pl.Scalar[pl.INDEX] = kb_0 * 512
-                            _t1: pl.Tensor[[4, 512], pl.FP32] = pl.tensor.view(combined_2, [4, 512], [b0_0, k0_0])
+                            _t1: pl.Tensor[[4, 512], pl.FP32] = pl.tensor.view(combined_iter_1_outer_rv, [4, 512], [b0_0, k0_0])
                             a_chunk_0: pl.Tensor[[4, 512], pl.BFLOAT16] = pl.tensor.cast(_t1, target_type=pl.BFLOAT16, mode=2)
                             w_chunk_0: pl.Tensor[[512, 128], pl.BFLOAT16] = pl.tensor.view(wo_0, [512, 128], [k0_0, o0_0])
                             _t2: pl.Tensor[[4, 128], pl.BFLOAT16] = pl.tensor.matmul(a_chunk_0, w_chunk_0, a_trans=False, b_trans=False, c_matrix_nz=False)

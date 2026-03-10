@@ -5,12 +5,12 @@ import pypto.language as pl
 class DeepSeekV32DecodeBack:
     @pl.function
     def deepseek_v3_2_decode_back_layer(self, hidden_states: pl.Tensor[[16, 7168], pl.BFLOAT16], node_id_t: pl.Tensor[[1], pl.INT32], combine_buf: pl.Tensor[[128, 16, 16384], pl.BFLOAT16], wo: pl.Tensor[[16384, 7168], pl.BFLOAT16], post_rms_weight: pl.Tensor[[1, 7168], pl.FP32], w_gate: pl.Tensor[[7168, 18432], pl.BFLOAT16], w_up: pl.Tensor[[7168, 18432], pl.BFLOAT16], w_down: pl.Tensor[[18432, 7168], pl.BFLOAT16], out: pl.Tensor[[16, 7168], pl.BFLOAT16]) -> pl.Tensor[[16, 7168], pl.BFLOAT16]:
-        node_id: pl.Scalar[pl.INT32] = pl.tensor.read(node_id_t, [0])
-        combined: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.create([16, 16384], dtype=pl.FP32)
-        for b in pl.parallel(0, 16, 1, chunk=4):
-            row: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.cast(pl.tensor.view(combine_buf, [1, 16384], [node_id, b, 0]), target_type=pl.FP32, mode=2)
-            combined: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.assemble(combined, row, [b, 0])
         with pl.auto_incore():
+            node_id: pl.Scalar[pl.INT32] = pl.tensor.read(node_id_t, [0])
+            combined: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.create([16, 16384], dtype=pl.FP32)
+            for b in pl.parallel(0, 16, 1, chunk=4):
+                row: pl.Tensor[[1, 16384], pl.FP32] = pl.tensor.cast(pl.tensor.view(combine_buf, [1, 16384], [node_id, b, 0]), target_type=pl.FP32, mode=2)
+                combined: pl.Tensor[[16, 16384], pl.FP32] = pl.tensor.assemble(combined, row, [b, 0])
             for b0 in pl.range(0, 16, 4):
                 resid1_tile: pl.Tensor[[4, 7168], pl.FP32] = pl.tensor.create([4, 7168], dtype=pl.FP32)
                 for ob in pl.parallel(0, 56, 1, chunk=8):

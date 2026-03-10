@@ -73,16 +73,15 @@ def build_deepseek_v3_2_prefill_back_program(
             w_down: pl.Tensor[[INTER_CFG, HIDDEN_CFG], pl.BF16],
             out: pl.Tensor[[BATCH_CFG, MAX_SEQ_CFG, HIDDEN_CFG], pl.BF16],
         ) -> pl.Tensor[[BATCH_CFG, MAX_SEQ_CFG, HIDDEN_CFG], pl.BF16]:
-            node_id = pl.tensor.read(node_id_t, [0])
+            with pl.auto_incore():
+                node_id = pl.tensor.read(node_id_t, [0])
+                for b in pl.parallel(0, BATCH_CFG, 1, chunk=4):
+                    seq_len_b = pl.tensor.read(seq_lens, [b])
+                    tok_blocks = (seq_len_b + TOK_TILE - 1) // TOK_TILE
+                    for p0_idx in pl.range(tok_blocks):
+                        p0 = p0_idx * TOK_TILE
+                        valid_tok = pl.min(TOK_TILE, seq_len_b - p0)
 
-            for b in pl.parallel(0, BATCH_CFG, 1, chunk=4):
-                seq_len_b = pl.tensor.read(seq_lens, [b])
-                tok_blocks = (seq_len_b + TOK_TILE - 1) // TOK_TILE
-                for p0_idx in pl.range(tok_blocks):
-                    p0 = p0_idx * TOK_TILE
-                    valid_tok = pl.min(TOK_TILE, seq_len_b - p0)
-
-                    with pl.auto_incore():
                         combined_tile = pl.cast(
                             pl.view(combine_buf, [TOK_TILE, ATTN_OUT_CFG], [node_id, b, p0, 0], valid_shape=[valid_tok, ATTN_OUT_CFG]),
                             target_type=pl.FP32,
